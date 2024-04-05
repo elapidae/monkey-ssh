@@ -113,21 +113,21 @@ Monkey_RSA Monkey_RSA::generate_or_read_private(std::string path)
     return res;
 }
 //=======================================================================================
-Monkey_RSA Monkey_RSA::read_public(std::string path)
-{
-    auto pubname = path + "/" + rsa_pubname;
-    if ( !fs::exists(pubname) )
-        throw verror << "public does not exists";
+//Monkey_RSA Monkey_RSA::read_public(std::string path)
+//{
+//    auto pubname = path + "/" + rsa_pubname;
+//    if ( !fs::exists(pubname) )
+//        throw verror << "public does not exists";
 
-    Monkey_RSA res;
-    res.rsa = read_from_pem(pubname, PEM_read_RSAPublicKey);
-    return res;
-}
+//    Monkey_RSA res;
+//    res.rsa = read_from_pem(pubname, PEM_read_RSAPublicKey);
+//    return res;
+//}
 //=======================================================================================
-Monkey_RSA Monkey_RSA::public_key( std::string hex_e, std::string hex_n )
+Monkey_RSA Monkey_RSA::from_public_hex_e_n( std::string hex_e, std::string hex_n )
 {
-    auto n = from_hex( hex_n );
     auto e = from_hex( hex_e );
+    auto n = from_hex( hex_n );
 
     //int RSA_set0_key(RSA *r, BIGNUM *n, BIGNUM *e, BIGNUM *d);
     Monkey_RSA res;
@@ -138,7 +138,7 @@ Monkey_RSA Monkey_RSA::public_key( std::string hex_e, std::string hex_n )
 //=======================================================================================
 string Monkey_RSA::sha_n() const
 {
-    auto n = this->n();
+    auto n = this->hex_n();
     auto ptr = str_to_uchar(n);
     string res;
     res.resize(20);
@@ -147,13 +147,13 @@ string Monkey_RSA::sha_n() const
     return vbyte_buffer(res).tohex();
 }
 //=======================================================================================
-string Monkey_RSA::e() const
+string Monkey_RSA::hex_e() const
 {
     auto big_e = RSA_get0_e(rsa);
     return to_hex(big_e);
 }
 //=======================================================================================
-string Monkey_RSA::n() const
+string Monkey_RSA::hex_n() const
 {
     auto big_n = RSA_get0_n(rsa);
     return to_hex(big_n);
@@ -161,6 +161,7 @@ string Monkey_RSA::n() const
 //=======================================================================================
 string Monkey_RSA::encrypt( const std::string& enc ) const
 {
+    auto dec_len = rsa_decrypt_len(rsa);
     auto max_sz = max_rsa_encrypt_len(rsa);
     vbyte_buffer bb(enc);
     auto view = bb.view();
@@ -172,9 +173,10 @@ string Monkey_RSA::encrypt( const std::string& enc ) const
         auto piece = view.string( size );
 
         auto cur = crypt( rsa, RSA_public_encrypt, piece );
-        uint16_t cur_sz = cur.size();
-        if ( int(cur_sz) != cur.size() ) throw verror << "cur size bad";
-        res.append_LE( cur_sz );
+
+        if ( cur.size() != dec_len )
+            throw verror << "RSA encrypted len is strabge:" << cur.size();
+
         res.append( cur );
     }
     return res;
@@ -182,15 +184,16 @@ string Monkey_RSA::encrypt( const std::string& enc ) const
 //=======================================================================================
 string Monkey_RSA::decrypt( const std::string& dec ) const
 {
+    auto dec_len = rsa_decrypt_len(rsa);
+
     vbyte_buffer bb(dec);
     auto view = bb.view();
 
     string res;
     while ( !view.finished() )
     {
-        auto size = view.u16_LE();
-        auto piece = view.string(size);
-        res += crypt( rsa, RSA_public_decrypt, piece );
+        auto piece = view.string( dec_len );
+        res += crypt( rsa, RSA_private_decrypt, piece );
     }
     return res;
 }
@@ -216,5 +219,26 @@ void Monkey_RSA::generate_new(std::string path)
     auto ret2 = system(pub.str().c_str());
     if (ret2)
         throw verror("Cannot generate pub RSA key in path ", path, "err: ", ret);
+}
+//=======================================================================================
+
+
+//=======================================================================================
+void Monkey_RSA::test()
+{
+    auto pri = Monkey_RSA::generate_or_read_private(".");
+    auto pub = Monkey_RSA::from_public_hex_e_n(pri.hex_e(), pri.hex_n());
+    string msg = "ABC";
+    msg += msg + msg + msg;
+    msg += msg + msg + msg;
+    msg += msg + msg + msg;
+    msg += msg + msg + msg;
+    msg += msg + msg + msg;
+    vdeb << "msg.si" << msg.size();
+
+    auto crip = pub.encrypt(msg);
+    vdeb << crip.size();
+    auto chk = pri.decrypt(crip);
+    vdeb << (chk == msg);
 }
 //=======================================================================================

@@ -47,12 +47,9 @@ void s2_accepted( vtcp_socket::accepted_peer peer )
 //=======================================================================================
 int main( int argc, char** argv )
 {
-    auto r = Monkey_RSA::generate_or_read_private(".");
-    auto msg = Monkey_AES::some_rand(123, 0);
-    auto crip = r.encrypt(msg);
-    vdeb << crip.size();
-    auto chk = r.decrypt(crip);
-    vdeb << (chk == msg);
+    Monkey_RSA::test();
+    auto priv = Monkey_RSA::generate_or_read_private(".");
+    auto pub  = Monkey_RSA::from_public_hex_e_n( priv.hex_e(), priv.hex_n() );
     return 0;
 
     for(int i = 0; i < 1000; ++i)

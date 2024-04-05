@@ -13,6 +13,8 @@
 class Monkey_RSA final
 {
 public:
+    static void test();
+
     class crypt_error : public std::runtime_error
     {
         using runtime_error::runtime_error;
@@ -21,13 +23,13 @@ public:
     static void generate_new(std::string path);
 
     static Monkey_RSA generate_or_read_private(std::string path);
-    static Monkey_RSA read_public(std::string path);
-    static Monkey_RSA public_key(std::string hex_e, std::string hex_n);
+    //static Monkey_RSA read_public(std::string path);
+    static Monkey_RSA from_public_hex_e_n(std::string hex_e, std::string hex_n);
 
     std::string sha_n() const;
 
-    std::string e() const;
-    std::string n() const;
+    std::string hex_e() const;
+    std::string hex_n() const;
 
     std::string encrypt( const std::string& enc ) const;
     std::string decrypt( const std::string& enc ) const;
