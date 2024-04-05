@@ -5,6 +5,13 @@
 #include "vlog.h"
 #include "vapplication.h"
 
+#include "crypto_box.h"
+#include <libssh/libsshpp.hpp>
+#include <openssl/rsa.h>
+#include "monkey_rsa.h"
+#include "monkey_aes.h"
+#include "vbyte_buffer.h"
+
 using namespace std;
 
 //=======================================================================================
@@ -40,6 +47,21 @@ void s2_accepted( vtcp_socket::accepted_peer peer )
 //=======================================================================================
 int main( int argc, char** argv )
 {
+    auto r = Monkey_RSA::generate_or_read_private(".");
+    auto msg = Monkey_AES::some_rand(123, 0);
+    auto crip = r.encrypt(msg);
+    vdeb << crip.size();
+    auto chk = r.decrypt(crip);
+    vdeb << (chk == msg);
+    return 0;
+
+    for(int i = 0; i < 1000; ++i)
+    {
+        Monkey_RSA::generate_new(".");
+        auto rsa = Monkey_RSA::generate_or_read_private(".");
+        vdeb << rsa.sha_n();
+    }
+    return 0;
     vdeb << __DATE__ << __TIME__;
     vcmdline_parser args( argc, argv );
 
