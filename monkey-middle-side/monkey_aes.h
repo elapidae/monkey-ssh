@@ -3,13 +3,19 @@
 #include <openssl/aes.h>
 #include <openssl/evp.h>
 #include <string>
+#include "vbyte_buffer.h"
 
 //=======================================================================================
 class Monkey_AES final
 {
 public:
-    static std::string some_rand(int size, int diff);
+    using str = std::string;
+    using cstr = const str&;
+    using str_str = std::tuple<str,str>;
+    using str_u32 = std::tuple<str,uint32_t>;
 
+    static std::string some_rand_hex(int size, int diff);
+    static std::string some_rand(int size);
 
     Monkey_AES();
     ~Monkey_AES();
@@ -30,9 +36,16 @@ public:
 class AES_Encryptor final
 {
 public:
+    using str = std::string;
+    using cstr = const str&;
+    using str_str = std::tuple<str,str>;
+    using str_u32 = std::tuple<str,uint32_t>;
+
     AES_Encryptor();
     std::string encrypt( const std::string& data );
     std::string hex_keys() const { return base.hex_keys(); }
+
+    str heap_encrypt(cstr heap, uint32_t body_size = 0);
 
 private:
     Monkey_AES base;
@@ -41,10 +54,18 @@ private:
 class AES_Decryptor final
 {
 public:
+    using str = std::string;
+    using cstr = const str&;
+    using str_str = std::tuple<str,str>;
+    using str_u32 = std::tuple<str,uint32_t>;
+    using u32_u32 = std::tuple<uint32_t,uint32_t>;
+
     AES_Decryptor();
     void set_keys( std::string keys );
 
     std::string decrypt( const std::string& data );
+
+    u32_u32 decrypt_sizes(vbyte_buffer* data);
 
 private:
     Monkey_AES base;

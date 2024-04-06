@@ -1,78 +1,11 @@
 #include "monkey_aes.h"
 
 #include <openssl/rand.h>
-
 #include "vtime_point.h"
 #include "vbyte_buffer.h"
 #include "vbyte_buffer_view.h"
 #include "vlog.h"
-
-static const unsigned int KEY_SIZE = 32;
-static const unsigned int BLOCK_SIZE = 16;
-template <typename T>
-struct zallocator
-{
-public:
-    typedef T value_type;
-    typedef value_type* pointer;
-    typedef const value_type* const_pointer;
-    typedef value_type& reference;
-    typedef const value_type& const_reference;
-    typedef std::size_t size_type;
-    typedef std::ptrdiff_t difference_type;
-
-    pointer address (reference v) const {return &v;}
-    const_pointer address (const_reference v) const {return &v;}
-
-    pointer allocate (size_type n, const void* hint = 0) {
-        if (n > std::numeric_limits<size_type>::max() / sizeof(T))
-            throw std::bad_alloc();
-        return static_cast<pointer> (::operator new (n * sizeof (value_type)));
-    }
-
-    void deallocate(pointer p, size_type n) {
-        OPENSSL_cleanse(p, n*sizeof(T));
-        ::operator delete(p);
-    }
-
-    size_type max_size() const {
-        return std::numeric_limits<size_type>::max() / sizeof (T);
-    }
-
-    template<typename U>
-    struct rebind
-    {
-        typedef zallocator<U> other;
-    };
-
-    void construct (pointer ptr, const T& val) {
-        new (static_cast<T*>(ptr) ) T (val);
-    }
-
-    void destroy(pointer ptr) {
-        static_cast<T*>(ptr)->~T();
-    }
-
-#if __cpluplus >= 201103L
-    template<typename U, typename... Args>
-    void construct (U* ptr, Args&&  ... args) {
-        ::new (static_cast<void*> (ptr) ) U (std::forward<Args> (args)...);
-    }
-
-    template<typename U>
-    void destroy(U* ptr) {
-        ptr->~U();
-    }
-#endif
-};
-
-typedef unsigned char byte;
-typedef std::basic_string<char, std::char_traits<char>, zallocator<char> > secure_string;
-using EVP_CIPHER_CTX_free_ptr = std::unique_ptr<EVP_CIPHER_CTX, decltype(&::EVP_CIPHER_CTX_free)>;
-
-void gen_params(byte key[KEY_SIZE], byte iv[BLOCK_SIZE]);
-void aes_encrypt(const byte key[KEY_SIZE], const byte iv[BLOCK_SIZE], const secure_string& ptext, secure_string& ctext);
-void aes_decrypt(const byte key[KEY_SIZE], const byte iv[BLOCK_SIZE], const secure_string& ctext, secure_string& rtext);
+#include "vcat.h"
 
 //=======================================================================================
 // from RSA
@@ -123,7 +56,7 @@ std::string Monkey_AES::hex_keys() const
     return bb.toHex();
 }
 //=======================================================================================
-std::string Monkey_AES::some_rand( int size, int diff )
+std::string Monkey_AES::some_rand_hex( int size, int diff )
 {
     std::string str;
     str.resize(size + diff);
@@ -131,6 +64,14 @@ std::string Monkey_AES::some_rand( int size, int diff )
     auto app = diff ? unsigned(*str.rbegin()) % diff : 0;
     auto res = vbyte_buffer(str).toHex();
     res.resize( size + app );
+    return res;
+}
+//=======================================================================================
+std::string Monkey_AES::some_rand(int size)
+{
+    std::string res;
+    res.resize(size);
+    RAND_bytes(str_to_uchar(&res), res.size());
     return res;
 }
 //=======================================================================================
@@ -146,56 +87,6 @@ Monkey_AES::~Monkey_AES()
     EVP_CIPHER_CTX_free(ctx);
 }
 //=======================================================================================
-
-
-void aes_encrypt(const byte key[KEY_SIZE], const byte iv[BLOCK_SIZE], const secure_string& ptext, secure_string& ctext)
-{
-    EVP_CIPHER_CTX_free_ptr ctx(EVP_CIPHER_CTX_new(), ::EVP_CIPHER_CTX_free);
-    int rc = EVP_EncryptInit_ex(ctx.get(), EVP_aes_256_cbc(), NULL, key, iv);
-    if (rc != 1)
-        throw std::runtime_error("EVP_EncryptInit_ex failed");
-
-    // Recovered text expands upto BLOCK_SIZE
-    ctext.resize(ptext.size()+BLOCK_SIZE);
-    int out_len1 = (int)ctext.size();
-
-    rc = EVP_EncryptUpdate(ctx.get(), (byte*)&ctext[0], &out_len1, (const byte*)&ptext[0], (int)ptext.size());
-    if (rc != 1)
-        throw std::runtime_error("EVP_EncryptUpdate failed");
-
-    int out_len2 = (int)ctext.size() - out_len1;
-    rc = EVP_EncryptFinal_ex(ctx.get(), (byte*)&ctext[0]+out_len1, &out_len2);
-    if (rc != 1)
-        throw std::runtime_error("EVP_EncryptFinal_ex failed");
-
-    // Set cipher text size now that we know it
-    ctext.resize(out_len1 + out_len2);
-}
-
-void aes_decrypt(const byte key[KEY_SIZE], const byte iv[BLOCK_SIZE], const secure_string& ctext, secure_string& rtext)
-{
-    EVP_CIPHER_CTX_free_ptr ctx(EVP_CIPHER_CTX_new(), ::EVP_CIPHER_CTX_free);
-    int rc = EVP_DecryptInit_ex(ctx.get(), EVP_aes_256_cbc(), NULL, key, iv);
-    if (rc != 1)
-        throw std::runtime_error("EVP_DecryptInit_ex failed");
-
-    // Recovered text contracts upto BLOCK_SIZE
-    rtext.resize(ctext.size());
-    int out_len1 = (int)rtext.size();
-
-    rc = EVP_DecryptUpdate(ctx.get(), (byte*)&rtext[0], &out_len1, (const byte*)&ctext[0], (int)ctext.size());
-    if (rc != 1)
-        throw std::runtime_error("EVP_DecryptUpdate failed");
-
-    int out_len2 = (int)rtext.size() - out_len1;
-    rc = EVP_DecryptFinal_ex(ctx.get(), (byte*)&rtext[0]+out_len1, &out_len2);
-    if (rc != 1)
-        throw std::runtime_error("EVP_DecryptFinal_ex failed");
-
-    // Set recovered text size now that we know it
-    rtext.resize(out_len1 + out_len2);
-}
-
 
 //=======================================================================================
 AES_Encryptor::AES_Encryptor()
@@ -227,12 +118,28 @@ std::string AES_Encryptor::encrypt( const std::string & data )
         throw std::runtime_error("EVP_EncryptFinal_ex failed");
 
     res.resize(out_len1 + out_len2);
-
-    secure_string rr;
-    aes_encrypt(base.key, base.iv, secure_string(data), rr);
-    std::string ss(rr.data(), rr.size());
-
     return res;
+}
+//=======================================================================================
+// 16 -- sizes
+// heap
+AES_Encryptor::str AES_Encryptor::heap_encrypt(cstr heap, uint32_t body_size)
+{
+    auto salt = Monkey_AES::some_rand_hex(5, 15);
+    vcat msg(salt, "\n", heap);
+    auto emsg = encrypt(msg);
+    uint32_t emsg_size = emsg.size();
+
+    vbyte_buffer bb;
+    bb.append( Monkey_AES::some_rand(8) );
+    bb.append_LE(emsg_size);
+    bb.append_LE(body_size);
+
+    auto ebb = encrypt(bb);
+    if (ebb.size() != 16) throw verror;
+
+    ebb.append( emsg );
+    return ebb;
 }
 //=======================================================================================
 
@@ -272,5 +179,17 @@ std::string AES_Decryptor::decrypt( const std::string& data )
     // Set recovered text size now that we know it
     res.resize(out_len1 + out_len2);
     return res;
+}
+//=======================================================================================
+AES_Decryptor::u32_u32 AES_Decryptor::decrypt_sizes(vbyte_buffer *data)
+{
+    if ( data->size() < 16 ) throw verror;
+    auto view = data->view();
+    view.u64_LE();
+    auto heap = view.u32_LE();
+    auto body = view.u32_LE();
+    data->chop_front(16);
+
+    return {heap, body};
 }
 //=======================================================================================

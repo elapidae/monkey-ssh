@@ -3,6 +3,7 @@
 #include <openssl/rsa.h>
 #include <string>
 #include <stdexcept>
+#include <memory>
 
 //struct Monkey_BIGNUM final
 //{
@@ -37,12 +38,7 @@ public:
     std::string sign( const std::string& enc ) const;
     bool verify( const std::string& enc ) const;
 
-    Monkey_RSA() {}
-    ~Monkey_RSA();
-
-    Monkey_RSA(Monkey_RSA && rhs) : rsa(rhs.rsa) { rhs.rsa = nullptr; }
-
 private:
-    RSA *rsa = nullptr;
+    std::shared_ptr<RSA> rsa;
 };
 //=======================================================================================

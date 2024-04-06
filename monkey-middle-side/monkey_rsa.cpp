@@ -80,7 +80,7 @@ static string to_hex(const BIGNUM * num)
 }
 //=======================================================================================
 using read_fn = decltype(&PEM_read_RSAPrivateKey);
-static RSA * read_from_pem(std::string fname, read_fn fn)
+static shared_ptr<RSA> read_from_pem(std::string fname, read_fn fn)
 {
     auto f = fopen(fname.c_str(), "r");
     if (!f) throw verror << "Cannot open " << fname;
@@ -95,7 +95,7 @@ static RSA * read_from_pem(std::string fname, read_fn fn)
     RSA_print_fp(ff, res, 0);
     fclose(ff);
 
-    return res;
+    return {res, RSA_free};
 }
 //=======================================================================================
 
@@ -131,8 +131,8 @@ Monkey_RSA Monkey_RSA::from_public_hex_e_n( std::string hex_e, std::string hex_n
 
     //int RSA_set0_key(RSA *r, BIGNUM *n, BIGNUM *e, BIGNUM *d);
     Monkey_RSA res;
-    res.rsa = RSA_new();
-    auto rcode = RSA_set0_key(res.rsa, n, e, nullptr);
+    res.rsa = {RSA_new(), RSA_free};
+    auto rcode = RSA_set0_key(res.rsa.get(), n, e, nullptr);
     return res;
 }
 //=======================================================================================
@@ -149,20 +149,20 @@ string Monkey_RSA::sha_n() const
 //=======================================================================================
 string Monkey_RSA::hex_e() const
 {
-    auto big_e = RSA_get0_e(rsa);
+    auto big_e = RSA_get0_e(rsa.get());
     return to_hex(big_e);
 }
 //=======================================================================================
 string Monkey_RSA::hex_n() const
 {
-    auto big_n = RSA_get0_n(rsa);
+    auto big_n = RSA_get0_n(rsa.get());
     return to_hex(big_n);
 }
 //=======================================================================================
 string Monkey_RSA::encrypt( const std::string& enc ) const
 {
-    auto dec_len = rsa_decrypt_len(rsa);
-    auto max_sz = max_rsa_encrypt_len(rsa);
+    auto dec_len = rsa_decrypt_len(rsa.get());
+    auto max_sz = max_rsa_encrypt_len(rsa.get());
     vbyte_buffer bb(enc);
     auto view = bb.view();
 
@@ -172,7 +172,7 @@ string Monkey_RSA::encrypt( const std::string& enc ) const
         auto size = max_sz <= view.remained() ? max_sz : view.remained();
         auto piece = view.string( size );
 
-        auto cur = crypt( rsa, RSA_public_encrypt, piece );
+        auto cur = crypt( rsa.get(), RSA_public_encrypt, piece );
 
         if ( cur.size() != dec_len )
             throw verror << "RSA encrypted len is strabge:" << cur.size();
@@ -184,7 +184,7 @@ string Monkey_RSA::encrypt( const std::string& enc ) const
 //=======================================================================================
 string Monkey_RSA::decrypt( const std::string& dec ) const
 {
-    auto dec_len = rsa_decrypt_len(rsa);
+    auto dec_len = rsa_decrypt_len(rsa.get());
 
     vbyte_buffer bb(dec);
     auto view = bb.view();
@@ -193,14 +193,9 @@ string Monkey_RSA::decrypt( const std::string& dec ) const
     while ( !view.finished() )
     {
         auto piece = view.string( dec_len );
-        res += crypt( rsa, RSA_private_decrypt, piece );
+        res += crypt( rsa.get(), RSA_private_decrypt, piece );
     }
     return res;
-}
-//=======================================================================================
-Monkey_RSA::~Monkey_RSA()
-{
-    RSA_free(rsa);
 }
 //=======================================================================================
 void Monkey_RSA::generate_new(std::string path)
