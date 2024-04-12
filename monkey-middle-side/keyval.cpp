@@ -44,3 +44,12 @@ Heap::heap_or_err Heap::parse( vbyte_buffer *buffer )
     return {true,heap};
 }
 //=======================================================================================
+KeyVal::Map Heap::parse_with_salt( vbyte_buffer *bb )
+{
+    auto pos = bb->str().find('\n');
+    bb->chop_front(pos + 1);
+    auto [ok,res] = parse( bb );
+    if (!ok) throw verror;
+    return res;
+}
+//=======================================================================================

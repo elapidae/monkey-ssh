@@ -6,6 +6,7 @@
 #include "vtimer.h"
 #include "vbyte_buffer.h"
 #include "settings.h"
+#include "keyval.h"
 
 //=======================================================================================
 class Side_Socket
@@ -19,13 +20,19 @@ public:
     void connect();
 
     vsignal<std::string> error_happened;
+    vsignal<> logined;
+
+    void send_clients_list_request();
+    vsignal<KeyVal::Map> clients_list;
 
 private:
     void connected();
     void received( const std::string& data );
 
     void wait_aes();
-    void wait_aes1();
+    void wait_logined();
+    void wait_any();
+    void wait_clients();
 
     using waiter_fn = decltype(&Side_Socket::wait_aes);
     waiter_fn waiter = nullptr;
@@ -33,8 +40,12 @@ private:
     vtcp_socket socket;
     Settings settings;
     Monkey_RSA rsa;
-    AES_Encryptor aes_enc;
-    AES_Decryptor aes_dec;
+    Monkey_AES aes;
     vbyte_buffer buffer;
+
+    bool read_heap_body_sizes();
+    bool read_heap_body();
+    uint32_t cur_heap_size = 0, cur_body_size = 0;
+    vbyte_buffer cur_heap, cur_body;
 };
 //=======================================================================================

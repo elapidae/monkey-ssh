@@ -28,5 +28,6 @@ struct Heap
 {
     using heap_or_err = std::tuple<bool, KeyVal::Map>;
     static heap_or_err parse( vbyte_buffer* bb );
+    static KeyVal::Map parse_with_salt( vbyte_buffer* bb );
 };
 //=======================================================================================

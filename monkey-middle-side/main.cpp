@@ -14,20 +14,63 @@
 #include "settings.h"
 #include "vcmdline_parser.h"
 #include "node_socket.h"
+#include "node_server.h"
+#include "side_socket.h"
 
 using namespace std;
 
 //=======================================================================================
 int main( int argc, char** argv )
 {
+    vtcp_server ss;
+    ss.listen_loopback_ip6(2983);
+    vtcp_socket::shared_ptr sock;
+    ss.accepted += [&](auto acc)
+    {
+        sock = acc.as_shared();
+        vdeb << sock->peer_address();
+        sock->received += [](auto data)
+        {
+            vdeb << data;
+        };
+    };
+    vapplication::poll();
+    return 0;
+
+
+    Monkey_AES::test();
+
     vcmdline_parser args(argc, argv);
-    auto path = args.safe_starts_with("path=", "/tmp/monkey-ssh/");
+    //auto path = args.safe_starts_with("path=", "/tmp/monkey-ssh/");
+    auto path = args.safe_starts_with("path=", "./");
 
     Settings sett;
     sett.load(path + "/monkey_settings.ini");
 
-    Node_Socket sock;
-    sock.server_waiting_rsa_keys("e:100001\nn:1234567890\n\n--567");
+    auto rsa = Monkey_RSA::generate_or_read_private(".");
+
+    Node_Server server, s2;
+    server.set_settings(sett);
+    server.listen();
+    s2.set_settings(sett);
+    //s2.listen();
+
+    Side_Socket side;
+    side.set_settings(sett);
+    side.set_rsa(rsa);
+    side.connect();
+
+    side.logined += [&] {
+        side.send_clients_list_request();
+    };
+    side.clients_list += [&](auto map) {
+        vdeb << "clients_list";
+        for (auto && kv: map) {
+            vdeb << kv.first << kv.second;
+        }
+    };
+
+    vapplication::poll();
 }
 //=======================================================================================
 

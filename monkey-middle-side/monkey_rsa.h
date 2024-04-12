@@ -35,8 +35,11 @@ public:
     std::string encrypt( const std::string& enc ) const;
     std::string decrypt( const std::string& enc ) const;
 
-    std::string sign( const std::string& enc ) const;
-    bool verify( const std::string& enc ) const;
+    uint bits() const;
+    uint block_size() const;
+
+    //std::string sign( const std::string& enc ) const;
+    //bool verify( const std::string& enc ) const;
 
 private:
     std::shared_ptr<RSA> rsa;

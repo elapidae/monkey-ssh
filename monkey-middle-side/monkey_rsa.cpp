@@ -198,6 +198,16 @@ string Monkey_RSA::decrypt( const std::string& dec ) const
     return res;
 }
 //=======================================================================================
+uint Monkey_RSA::bits() const
+{
+    return RSA_bits( rsa.get() );
+}
+//=======================================================================================
+uint Monkey_RSA::block_size() const
+{
+    return RSA_size( rsa.get() );
+}
+//=======================================================================================
 void Monkey_RSA::generate_new(std::string path)
 {
     if (!fs::exists(path))

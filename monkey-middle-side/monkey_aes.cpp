@@ -15,6 +15,20 @@ unsigned char *str_to_uchar( std::string* data );
 
 
 //=======================================================================================
+void Monkey_AES::test()
+{
+    Monkey_AES aes;
+    aes.generate_randoms();
+    auto msg = some_rand(1234);
+    auto enc = aes.encrypt(msg);
+    auto dec = aes.decrypt(enc);
+
+    if (dec != msg) throw verror;
+}
+//=======================================================================================
+
+
+//=======================================================================================
 void Monkey_AES::generate_randoms()
 {
     int rc = RAND_bytes(key, KEY_SIZE);
@@ -78,42 +92,32 @@ std::string Monkey_AES::some_rand(int size)
 Monkey_AES::Monkey_AES()
 {
     static auto rcode = EVP_add_cipher(EVP_aes_256_cbc());
-    ctx = EVP_CIPHER_CTX_new();
+
+    ctx.reset( EVP_CIPHER_CTX_new(), EVP_CIPHER_CTX_free );
     if ( !ctx ) throw verror;
-}
-//=======================================================================================
-Monkey_AES::~Monkey_AES()
-{
-    EVP_CIPHER_CTX_free(ctx);
 }
 //=======================================================================================
 
 //=======================================================================================
-AES_Encryptor::AES_Encryptor()
-{
-    base.generate_randoms();
-    int rc; (void)rc;
-}
-//=======================================================================================
-std::string AES_Encryptor::encrypt( const std::string & data )
+std::string Monkey_AES::encrypt( const std::string & data )
 {
     int rc;
-    rc = EVP_EncryptInit(base.ctx, EVP_aes_256_cbc(), base.key, base.iv);
+    rc = EVP_EncryptInit(ctx.get(), EVP_aes_256_cbc(), key, iv);
     if (rc != 1)
         throw std::runtime_error("EVP_EncryptInit_ex failed");
 
     std::string res;
-    res.resize( data.size() + base.BLOCK_SIZE );
+    res.resize( data.size() + BLOCK_SIZE );
     int out_len1 = res.size();
 
     auto out_ptr = str_to_uchar( &res );
     auto in_ptr  = str_to_uchar( data );
-    rc = EVP_EncryptUpdate(base.ctx, out_ptr, &out_len1, in_ptr, data.size());
+    rc = EVP_EncryptUpdate(ctx.get(), out_ptr, &out_len1, in_ptr, data.size());
     if (rc != 1)
         throw std::runtime_error("EVP_EncryptUpdate failed");
 
     int out_len2 = res.size() - out_len1;
-    rc = EVP_EncryptFinal(base.ctx, out_ptr+out_len1, &out_len2);
+    rc = EVP_EncryptFinal(ctx.get(), out_ptr+out_len1, &out_len2);
     if (rc != 1)
         throw std::runtime_error("EVP_EncryptFinal_ex failed");
 
@@ -123,7 +127,7 @@ std::string AES_Encryptor::encrypt( const std::string & data )
 //=======================================================================================
 // 16 -- sizes
 // heap
-AES_Encryptor::str AES_Encryptor::heap_encrypt(cstr heap, uint32_t body_size)
+Monkey_AES::str Monkey_AES::heap_encrypt(cstr heap, uint32_t body_size)
 {
     auto salt = Monkey_AES::some_rand_hex(5, 15);
     vcat msg(salt, "\n", heap);
@@ -131,7 +135,7 @@ AES_Encryptor::str AES_Encryptor::heap_encrypt(cstr heap, uint32_t body_size)
     uint32_t emsg_size = emsg.size();
 
     vbyte_buffer bb;
-    bb.append( Monkey_AES::some_rand(8) );
+    bb.append( Monkey_AES::some_rand(7) );
     bb.append_LE(emsg_size);
     bb.append_LE(body_size);
 
@@ -145,19 +149,10 @@ AES_Encryptor::str AES_Encryptor::heap_encrypt(cstr heap, uint32_t body_size)
 
 
 //=======================================================================================
-AES_Decryptor::AES_Decryptor()
-{}
-//=======================================================================================
-void AES_Decryptor::set_keys(std::string keys)
-{
-    base.set_keys(keys);
-    int rc; (void)rc;
-}
-//=======================================================================================
-std::string AES_Decryptor::decrypt( const std::string& data )
+std::string Monkey_AES::decrypt( const std::string& data )
 {
     int rc;
-    rc = EVP_DecryptInit(base.ctx, EVP_aes_256_cbc(), base.key, base.iv);
+    rc = EVP_DecryptInit( ctx.get(), EVP_aes_256_cbc(), key, iv );
     if (rc != 1)
         throw std::runtime_error("EVP_DecryptInit_ex failed");
 
@@ -167,12 +162,12 @@ std::string AES_Decryptor::decrypt( const std::string& data )
 
     auto in_ptr  = str_to_uchar( data );
     auto out_ptr = str_to_uchar( &res );
-    rc = EVP_DecryptUpdate( base.ctx, out_ptr, &out_len1, in_ptr, data.size() );
+    rc = EVP_DecryptUpdate( ctx.get(), out_ptr, &out_len1, in_ptr, data.size() );
     if (rc != 1)
         throw std::runtime_error("EVP_DecryptUpdate failed");
 
     int out_len2 = res.size() - out_len1;
-    rc = EVP_DecryptFinal( base.ctx, out_ptr+out_len1, &out_len2 );
+    rc = EVP_DecryptFinal( ctx.get(), out_ptr+out_len1, &out_len2 );
     if (rc != 1)
         throw std::runtime_error("EVP_DecryptFinal_ex failed");
 
@@ -181,14 +176,17 @@ std::string AES_Decryptor::decrypt( const std::string& data )
     return res;
 }
 //=======================================================================================
-AES_Decryptor::u32_u32 AES_Decryptor::decrypt_sizes(vbyte_buffer *data)
+Monkey_AES::u32_u32 Monkey_AES::decrypt_sizes(vbyte_buffer *data)
 {
     if ( data->size() < 16 ) throw verror;
-    auto view = data->view();
-    view.u64_LE();
+    auto esizes = data->left(16);
+    data->chop_front(16);
+
+    vbyte_buffer sizes = decrypt(esizes);
+    auto view = sizes.view();
+    view.string(7);
     auto heap = view.u32_LE();
     auto body = view.u32_LE();
-    data->chop_front(16);
 
     return {heap, body};
 }
