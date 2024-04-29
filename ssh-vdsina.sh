@@ -1,4 +1,4 @@
 #!/bin/bash -e
 
-ssh root@v25735.hosted-by-vdsina.com
+ssh root@v37503.hosted-by-vdsina.com
 
