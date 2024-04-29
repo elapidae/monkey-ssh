@@ -17,10 +17,12 @@ void Node_Server::set_settings(Settings s)
 //=======================================================================================
 void Node_Server::listen()
 {
-    try {
-        server.listen_any_ip4(settings.server.port);
+    try
+    {
+        server.listen_any_ip4( settings.server.port );
     }
-    catch (const std::exception &e) {
+    catch (const std::exception &e)
+    {
         vwarning << "listen server err:" << e.what();
         exit(0);
     }
