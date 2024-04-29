@@ -28,6 +28,13 @@ void Node_Server::listen()
     }
 }
 //=======================================================================================
+void Node_Server::print_status()
+{
+    vdeb << "node status: alive, server:" << server.address()
+         << "waiters:" << waiters.size()
+         << "connections:" << connections.size();
+}
+//=======================================================================================
 void Node_Server::server_accepted(vtcp_socket::accepted_peer peer)
 {
     vdeb << "accepted connection from" << peer.peer_address();

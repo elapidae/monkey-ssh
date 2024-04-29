@@ -11,6 +11,7 @@
 #include "vcmdline_parser.h"
 #include "node_socket.h"
 #include "node_server.h"
+#include "vtimer.h"
 
 using namespace std;
 
@@ -32,6 +33,10 @@ int main( int argc, char** argv )
     Node_Server server;
     server.set_settings( sett );
     server.listen();
+
+    vtimer timer;
+    timer.start(10s);
+    timer.timeout.link( &server, &Node_Server::print_status );
 
     vapplication::poll();
 }

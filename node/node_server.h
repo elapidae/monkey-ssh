@@ -18,6 +18,7 @@ public:
 
     void listen();
 
+    void print_status();
 
 private:
     Settings settings;
