@@ -19,7 +19,11 @@ public:
 
     void send_transit( vbyte_buffer heap, const vbyte_buffer& body );
 
-//private:
+    bool is_connected() const;
+
+    std::string client;
+
+private:
     void disconnected();
     void received( const std::string& data );
 
@@ -37,7 +41,6 @@ public:
     vtcp_socket::shared_ptr socket;
     Monkey_RSA rsa;
     Monkey_AES aes;
-    std::string client;
 
     bool read_heap_body_sizes();
     bool read_heap_body();

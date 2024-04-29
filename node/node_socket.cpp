@@ -26,6 +26,11 @@ void Node_Socket::send_transit( vbyte_buffer tran_heap, const vbyte_buffer& body
     socket->send( body );
 }
 //=======================================================================================
+bool Node_Socket::is_connected() const
+{
+    return socket->is_connected();
+}
+//=======================================================================================
 void Node_Socket::disconnected()
 {
     owner->deferred_delete_socket( this );
@@ -57,7 +62,7 @@ void Node_Socket::waiting_rsa_keys()
         return;
     }
 
-    if ( owner->has_rsa_sha(rsa.sha_n()) )
+    if ( owner->check_has_rsa_sha(rsa.sha_n()) )
     {
         vwarning << "defer del: sha already";
         socket->send("error:already in server\n\n");

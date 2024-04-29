@@ -21,7 +21,6 @@ int main( int argc, char **argv )
     auto rsa = Monkey_RSA::generate_or_read_private( path );
 
     Side_Socket socket;
-    auto my_port = 2222;
 
     socket.set_rsa( rsa );
     socket.set_settings( sett );
@@ -32,12 +31,15 @@ int main( int argc, char **argv )
         socket.send_clients_list_request();
     };
 
+    auto peer_sha = "2b45c3b6208cf87ebf6e4f46917940163ffd4eed";
+    auto my_port = 2222;
     socket.clients_list += [&](auto list)
     {
         for ( auto l: list ) {
             vdeb << l;
         }
         vdeb << "my sha:" << socket.sha();
+        socket.bind_port_proxy( 1, peer_sha, my_port, 1111 );
     };
 
     vapplication::poll();

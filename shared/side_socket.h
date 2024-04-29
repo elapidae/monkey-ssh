@@ -20,6 +20,7 @@ public:
 
     vtcp_socket socket;
     std::string peer_sha;
+    uint16_t peer_port;
 
     vtcp_server server;
     vtcp_socket::shared_ptr server_socket;
@@ -46,10 +47,14 @@ public:
     void send_clients_list_request();
     vsignal<KeyVal::Map> clients_list;
 
-    void make_port_proxy( int slot,
-                          std::string source_sha,
+    void bind_port_proxy( int slot,
                           std::string target_sha,
-                          uint16_t src_port, uint16_t peer_port );
+                          uint16_t src_port,
+                          uint16_t peer_port );
+
+    void make_port_proxy( int slot,
+                          std::string target_sha,
+                          uint16_t peer_port );
 
     void send_slot_connected(Slot_Proxy* slot);
     void send_slot_disconnected(Slot_Proxy* slot);

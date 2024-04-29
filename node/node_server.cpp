@@ -42,9 +42,17 @@ void Node_Server::server_accepted(vtcp_socket::accepted_peer peer)
     waiters.emplace( ptr.get(), ptr );
 }
 //=======================================================================================
-bool Node_Server::has_rsa_sha(string sha) const
+bool Node_Server::check_has_rsa_sha(string sha)
 {
-    return connections.count(sha);
+    if ( !connections.count(sha) ) return false;
+    auto &c = connections.at(sha);
+
+    if ( !c->is_connected() )
+    {
+        connections.erase( sha );
+    }
+
+    return connections.count( sha );
 }
 //=======================================================================================
 bool Node_Server::is_correct_login( string login, string pass ) const

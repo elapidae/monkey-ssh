@@ -26,7 +26,7 @@ private:
     void server_accepted(vtcp_socket::accepted_peer peer);
 
     friend class Node_Socket;
-    bool has_rsa_sha(string sha) const;
+    bool check_has_rsa_sha(string sha);
 
     using Node_Socket_Ptr = std::shared_ptr<Node_Socket>;
     std::map<Node_Socket*,Node_Socket_Ptr> waiters;

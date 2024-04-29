@@ -48,24 +48,35 @@ void Side_Socket::send_clients_list_request()
     waiter = &Side_Socket::wait_clients;
 }
 //=======================================================================================
-void Side_Socket::make_port_proxy( int slot,
-                                   string source_sha,
-                                   string target_sha,
+void Side_Socket::bind_port_proxy( int slot,
+                                   std::string target_sha,
                                    uint16_t src_port,
                                    uint16_t peer_port )
 {
     if ( slot != 1 && slot != 2 ) throw verror;
 
     auto &sl = slot == 1 ? slot1 : slot2;
-    sl.initial = true;
-    sl.peer_sha = target_sha;
+    sl.initial   = true;
+    sl.peer_sha  = target_sha;
+    sl.peer_port = peer_port;
+
     sl.server.listen( vsocket_address::loopback_ip4(src_port) );
+    vdeb << "Local proxy addr:" << sl.server.address();
+
+    waiter = &Side_Socket::wait_any;
+}
+//=======================================================================================
+void Side_Socket::make_port_proxy( int slot,
+                                   string target_sha,
+                                   uint16_t peer_port )
+{
+    if ( slot != 1 && slot != 2 ) throw verror;
 
     vcat cmd;
     cmd( "op:transit\n" );
     cmd( "target:", target_sha, "\n\n" );
     // next part
-    cmd( "source:", source_sha, "\n" );
+    cmd( "source:", sha(), "\n" );
     cmd( "op:connect\n" );
     cmd( "slot:", slot, "\n" );
     cmd( "port:", peer_port, "\n\n" );
@@ -196,6 +207,7 @@ void Side_Socket::wait_logined()
     {
         vdeb << "Side error:" << map["error"];
         socket.close();
+        //exit(0);
         return;
     }
     vdeb << "Side logined:" << map["logined"];
@@ -242,6 +254,12 @@ void Side_Socket::wait_any()
     if ( op == "connected" )
     {
         vdeb << "Peer connected, slot" << map.at("slot");
+        return;
+    }
+
+    if ( op == "disconnected" )
+    {
+        vdeb << "Peer disconnected, " << map;
         return;
     }
 
@@ -339,6 +357,8 @@ Slot_Proxy::Slot_Proxy()
         {
             owner->send_slot_received( this, data );
         };
+
+        owner->make_port_proxy( counter, peer_sha, peer_port );
     };
 }
 //=======================================================================================
