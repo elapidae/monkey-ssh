@@ -12,7 +12,7 @@ void test_tcp( int port )
 
     s.connected += []{ vdeb << "inside socket connected to master-slot"; };
     s.disconnected+= []{ vdeb << "disconnected"; };
-    s.received += [](auto data){ vdeb << "received" << data; };
+    s.received += [](auto data){ vdeb << "received >> " << data; };
 }
 //=======================================================================================
 int main( int argc, char **argv )
@@ -41,7 +41,8 @@ int main( int argc, char **argv )
         socket.send_clients_list_request();
     };
 
-    auto peer_sha = "2b45c3b6208cf87ebf6e4f46917940163ffd4eed";
+    //auto peer_sha = "2b45c3b6208cf87ebf6e4f46917940163ffd4eed";
+    auto peer_sha = "85b2548706829f29d269d5aa38400c3097567ccc";
     auto my_port = 2222;
     socket.clients_list += [&](auto list)
     {
@@ -49,8 +50,8 @@ int main( int argc, char **argv )
             vdeb << l;
         }
         vdeb << "my sha:" << socket.sha();
-        socket.bind_port_proxy( 1, peer_sha, my_port, 1111 );
-        test_tcp(my_port);
+        socket.bind_port_proxy( 1, peer_sha, my_port, 22 );
+        //test_tcp(my_port);
     };
 
     vapplication::poll();

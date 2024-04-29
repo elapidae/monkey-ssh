@@ -28,15 +28,17 @@ int main( int argc, char **argv )
     t.timeout += [&]
     {
         static auto c = 0;
-        vdeb << ++c;
+        static std::string msg;
+        msg += vcat(++c);
+        vdeb << msg;
         if (!socket || !socket->is_connected() ) return;
-        socket->send( vcat("phony ", c++) );
+        socket->send( msg );
     };
     //
     t.start(2s);
     t.start(400ms);
     t.start(100ms);
-    t.start(100ns);
+    //t.start(10ms);
 
     vapplication::poll();
 }

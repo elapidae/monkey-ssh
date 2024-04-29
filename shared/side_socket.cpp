@@ -127,7 +127,11 @@ void Side_Socket::send_slot_received( Slot_Proxy * slot, const std::string & bod
     cmd( "slot:", slot->counter, "\n\n" );
 
     auto heap = aes.heap_encrypt( cmd, body.size() );
-    socket.send(heap + body);
+
+    socket.send( heap );
+    socket.send( body );
+
+    vdeb << "slot proxied " << body.size() << "bytes";
 }
 //=======================================================================================
 void Side_Socket::connected()
