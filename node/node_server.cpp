@@ -56,9 +56,26 @@ void Node_Server::logined( Node_Socket *socket, std::string sha )
 //=======================================================================================
 void Node_Server::deferred_delete_socket( Node_Socket * socket )
 {
-    auto del = [this,socket] {
-        waiters.erase(socket);
+    auto del = [this,socket]
+    {
+        if ( waiters.erase(socket) )
+        {
+            vdeb << "socket erased from waiters" << socket;
+            return;
+        }
+
+        for ( auto & s: connections )
+        {
+            if ( s.second.get() == socket )
+            {
+                connections.erase( s.first );
+                vdeb << "socket erased from connections" << socket;
+                return;
+            }
+        }
+        vwarning << "Cannot delete socket" << socket;
     };
+
     vapplication().invoke( del );
 }
 //=======================================================================================

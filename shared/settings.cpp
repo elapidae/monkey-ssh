@@ -17,10 +17,9 @@ void Settings::load( std::string fname )
     server.login    = serv.safe_get("login",    server.login);
     server.password = serv.safe_get("password", server.password);
     server.port     = serv.safe_get("port",     server.port);
+    server.address  = serv.safe_get("address",  server.address);
 
     auto cli = sett.subgroup("client");
-    client.server   = cli.safe_get("server",    client.server);
-    client.port     = cli.safe_get("port",      client.port);
     client.login    = cli.safe_get("login",     client.login);
     client.password = cli.safe_get("password",  client.password);
 }

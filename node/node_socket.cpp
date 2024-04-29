@@ -28,7 +28,7 @@ void Node_Socket::send_transit( vbyte_buffer tran_heap, const vbyte_buffer& body
 //=======================================================================================
 void Node_Socket::disconnected()
 {
-
+    owner->deferred_delete_socket( this );
 }
 //=======================================================================================
 void Node_Socket::received( const std::string& data )
@@ -50,14 +50,18 @@ void Node_Socket::waiting_rsa_keys()
     rsa = Monkey_RSA::from_public_hex_e_n(he, hn);
     if ( rsa.bits() < 2048 )
     {
+        vwarning << "defer del: rsa < 2048";
         socket->send("error:rsa < 2048\n\n");
+        socket->close();
         owner->deferred_delete_socket( this );
         return;
     }
 
     if ( owner->has_rsa_sha(rsa.sha_n()) )
     {
+        vwarning << "defer del: sha already";
         socket->send("error:already in server\n\n");
+        socket->close();
         owner->deferred_delete_socket( this );
         return;
     }

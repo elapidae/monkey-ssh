@@ -36,7 +36,7 @@ string Side_Socket::sha() const
 //=======================================================================================
 void Side_Socket::connect()
 {
-    vsocket_address addr{settings.client.server, settings.client.port};
+    vsocket_address addr{settings.server.address, settings.server.port};
     vdeb << "About to connect" << addr;
     socket.connect( addr );
 }
@@ -145,6 +145,14 @@ void Side_Socket::received( const std::string& data )
 void Side_Socket::wait_aes()
 {
     vdeb << "side socket waiting aes";
+
+    if ( buffer.starts_with("error:") )
+    {
+        vdeb << "Error found:" << buffer;
+        socket.close();
+        exit(0);
+    }
+
     auto block_size = rsa.block_size();
     if ( buffer.size() < block_size )
         return;

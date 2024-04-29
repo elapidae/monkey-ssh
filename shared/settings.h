@@ -13,13 +13,12 @@ public:
     struct Server {
         string   login      = "node";
         string   password   = "apes";
+
+        string   address    = "v37503.hosted-by-vdsina.com";
         uint16_t port       = 2883;
     } server;
 
     struct Client {
-        string   server     = "v25735.hosted-by-vdsina.com";
-        uint16_t port       = 2883;
-
         string   login      = "client";
         string   password   = "apes";
     } client;

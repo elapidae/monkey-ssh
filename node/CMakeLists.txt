@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(monkey-middle-side LANGUAGES CXX)
+project(monkey-node LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(VLIBS_DIR ${CMAKE_CURRENT_LIST_DIR}/../../vlibs2)
+set(VLIBS_DIR ${CMAKE_CURRENT_LIST_DIR}/../vlibs2)
 include(${VLIBS_DIR}/cmake/threads.cmake)
 include(${VLIBS_DIR}/cmake/vnetwork.cmake)
 include(${VLIBS_DIR}/cmake/vtimer.cmake)
@@ -13,9 +13,9 @@ include(${VLIBS_DIR}/cmake/vcmdline_parser.cmake)
 include(${VLIBS_DIR}/cmake/vbyte_buffer.cmake)
 include(${VLIBS_DIR}/cmake/vsettings.cmake)
 include(${VLIBS_DIR}/cmake/vcmdline_parser.cmake)
-set(SRC ${V_HEADERS} ${V_SOURCES})
+set( SRC ${V_HEADERS} ${V_SOURCES} )
 
-set( SHARED_DIR ${CMAKE_CURRENT_LIST_DIR}/../monkey-shared )
+set( SHARED_DIR ${CMAKE_CURRENT_LIST_DIR}/../shared )
 include_directories(${SHARED_DIR})
 set( SRC ${SRC}
     ${SHARED_DIR}/monkey_rsa.cpp
@@ -35,7 +35,8 @@ set( SRC ${SRC}
      node_server.h
     )
 
-find_package(OpenSSL REQUIRED)
+# apt install libssl-dev
+find_package( OpenSSL REQUIRED )
 
-add_executable(${PROJECT_NAME} main.cpp ${SRC})
+add_executable( ${PROJECT_NAME} main.cpp ${SRC} )
 target_link_libraries( ${PROJECT_NAME} ${V_LIBRARIES} OpenSSL::SSL )
