@@ -224,7 +224,7 @@ void Side_Socket::wait_any()
     if ( !read_heap_body() )
         return;
 
-    vdeb << "ANY" << sha();
+    vdeb << "ANY" << cur_heap;
 
     cur_heap = aes.decrypt( cur_heap );
     auto map = Heap::parse_with_salt( &cur_heap );
@@ -242,12 +242,13 @@ void Side_Socket::wait_any()
     }
 
     if ( op == "connect" )
-    {
+    {        
         auto * slot = map.at("slot") == "1" ? &slot1 : &slot2;
         auto port = vcat::from_text<uint16_t>( map.at("port") );
         slot->peer_sha = map.at("source");
         slot->initial = false;
         slot->socket.connect( vsocket_address::loopback_ip4(port) );
+        vdeb << "About to connect to:" << port << "src:" << slot->peer_sha;
         return;
     }
 
@@ -265,6 +266,8 @@ void Side_Socket::wait_any()
 
     if ( op == "received" )
     {
+        vdeb << "received";
+
         auto * slot = map.at("slot") == "1" ? &slot1 : &slot2;
 
         if ( slot->initial )
@@ -277,9 +280,17 @@ void Side_Socket::wait_any()
             return;
         }
 
-        // not initial
         slot->socket.send( cur_body );
         return;
+    }
+
+    if ( op == "error" )
+    {
+        if ( map["desc"] == "no target" )
+        {
+            vdeb << "HERE";
+            return;
+        }
     }
 
     vdeb << sha() << op << "side: any received... bad..." << map;

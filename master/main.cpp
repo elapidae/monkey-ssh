@@ -5,6 +5,16 @@
 #include "side_socket.h"
 
 //=======================================================================================
+void test_tcp( int port )
+{
+    static vtcp_socket s;
+    s.connect( vsocket_address::loopback_ip4(port) );
+
+    s.connected += []{ vdeb << "connected"; };
+    s.disconnected+= []{ vdeb << "disconnected"; };
+    s.received += [](auto data){ vdeb << "received" << data; };
+}
+//=======================================================================================
 int main( int argc, char **argv )
 {
     Monkey_AES::test();
@@ -40,6 +50,7 @@ int main( int argc, char **argv )
         }
         vdeb << "my sha:" << socket.sha();
         socket.bind_port_proxy( 1, peer_sha, my_port, 1111 );
+        test_tcp(my_port);
     };
 
     vapplication::poll();

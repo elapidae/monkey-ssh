@@ -131,7 +131,8 @@ void Node_Socket::waiting_op()
         auto target = owner->get_by_sha( target_sha );
         if ( !target ) {
             vdeb << "Has no target" << target_sha;
-            auto crypted = aes.heap_encrypt("op:error\ndesc:no target\n\n");
+            vcat msg("op:error\ndesc:no target\ntarget:", target_sha, "\n\n");
+            auto crypted = aes.heap_encrypt( msg );
             socket->send( crypted );
             return;
         }

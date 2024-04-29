@@ -38,6 +38,8 @@ int main( int argc, char** argv )
     timer.start(10s);
     timer.timeout.link( &server, &Node_Server::print_status );
 
+    vdeb << "Node ready";
+
     vapplication::poll();
 }
 //=======================================================================================
