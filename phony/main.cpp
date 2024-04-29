@@ -29,10 +29,14 @@ int main( int argc, char **argv )
     {
         static auto c = 0;
         vdeb << ++c;
-        if (!socket) return;
+        if (!socket || !socket->is_connected() ) return;
         socket->send( vcat("phony ", c++) );
     };
-    t.start(1s);
+    //
+    t.start(2s);
+    t.start(400ms);
+    t.start(100ms);
+    t.start(100ns);
 
     vapplication::poll();
 }

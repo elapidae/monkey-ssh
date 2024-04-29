@@ -17,6 +17,9 @@ Side_Socket::Side_Socket()
 
     socket.connected.link(this, &Side_Socket::connected);
     socket.received.link(this, &Side_Socket::received);
+    socket.disconnected += [this]{
+        disconnected();
+    };
 }
 //=======================================================================================
 void Side_Socket::set_settings(Settings s)
@@ -45,7 +48,7 @@ void Side_Socket::send_clients_list_request()
 {
     auto heap = aes.heap_encrypt("op:clients-list\n\n");
     socket.send(heap);
-    waiter = &Side_Socket::wait_clients;
+    waiter = &Side_Socket::wait_any;
 }
 //=======================================================================================
 void Side_Socket::bind_port_proxy( int slot,
@@ -84,6 +87,7 @@ void Side_Socket::make_port_proxy( int slot,
     auto heap = aes.heap_encrypt( cmd );
     socket.send(heap);
     waiter = &Side_Socket::wait_any;
+    vdeb << "master-slot sent connect cmd";
 }
 //=======================================================================================
 void Side_Socket::send_slot_connected( Slot_Proxy * slot )
@@ -97,6 +101,7 @@ void Side_Socket::send_slot_connected( Slot_Proxy * slot )
 
     auto heap = aes.heap_encrypt( cmd );
     socket.send(heap);
+    vdeb << "slave-slot connected, sent this";
 }
 //=======================================================================================
 void Side_Socket::send_slot_disconnected( Slot_Proxy * slot )
@@ -123,8 +128,6 @@ void Side_Socket::send_slot_received( Slot_Proxy * slot, const std::string & bod
 
     auto heap = aes.heap_encrypt( cmd, body.size() );
     socket.send(heap + body);
-
-    //vdeb << "HERE!!!!!!!!!!!!!";
 }
 //=======================================================================================
 void Side_Socket::connected()
@@ -142,14 +145,7 @@ void Side_Socket::connected()
 //=======================================================================================
 void Side_Socket::received( const std::string& data )
 {
-    buffer = data;
-    //vdeb << "side socket received" << buffer.size() << "bytes";
-    //    try {
-    //        (this->*waiter)();
-    //    }  catch (...) {
-    //        vdeb << "bad...";
-    //    }
-
+    buffer += data;
     (this->*waiter)();
 }
 //=======================================================================================
@@ -224,8 +220,6 @@ void Side_Socket::wait_any()
     if ( !read_heap_body() )
         return;
 
-    vdeb << "ANY" << cur_heap;
-
     cur_heap = aes.decrypt( cur_heap );
     auto map = Heap::parse_with_salt( &cur_heap );
     auto op = map.at( "op" );
@@ -252,6 +246,13 @@ void Side_Socket::wait_any()
         return;
     }
 
+    if ( op == "clients-list")
+    {
+        map.erase("op");
+        clients_list(map);
+        return;
+    }
+
     if ( op == "connected" )
     {
         vdeb << "Peer connected, slot" << map.at("slot");
@@ -261,12 +262,14 @@ void Side_Socket::wait_any()
     if ( op == "disconnected" )
     {
         vdeb << "Peer disconnected, " << map;
+        auto * slot = map.at("slot") == "1" ? &slot1 : &slot2;
+        slot->server_socket->close();
         return;
     }
 
     if ( op == "received" )
     {
-        vdeb << "received";
+        //vdeb << "received";
 
         auto * slot = map.at("slot") == "1" ? &slot1 : &slot2;
 
@@ -288,7 +291,18 @@ void Side_Socket::wait_any()
     {
         if ( map["desc"] == "no target" )
         {
-            vdeb << "HERE";
+            auto target = map["target"];
+            vdeb << "no target: " << target;
+            if ( slot1.peer_sha == target )
+            {
+                slot1.socket.close();
+                slot1.server_socket.reset();
+            }
+            if ( slot2.peer_sha == target )
+            {
+                slot2.socket.close();
+                slot2.server_socket.reset();
+            }
             return;
         }
     }
@@ -297,25 +311,15 @@ void Side_Socket::wait_any()
     throw verror;
 }
 //=======================================================================================
-void Side_Socket::wait_clients()
-{
-    if ( !read_heap_body() ) return;
-    cur_heap = aes.decrypt(cur_heap);
-    auto map = Heap::parse_with_salt(&cur_heap);
-    clients_list(map);
-    waiter = &Side_Socket::wait_any;
-}
-//=======================================================================================
 bool Side_Socket::read_heap_body_sizes()
 {
     if ( cur_heap_size != 0 ) return true;
 
     if ( buffer.size() < 16 ) return false;
 
-    auto [h, b] = aes.decrypt_sizes( &buffer );
-    cur_heap_size = h;
-    cur_body_size = b;
+    aes.decrypt_sizes( &buffer, &cur_heap_size, &cur_body_size );
 
+    //vdeb << "DECRYPTED SIZES:" << cur_heap_size << cur_body_size;
 
     if ( cur_heap_size == 0 ) throw verror;
     return true;
@@ -337,6 +341,8 @@ bool Side_Socket::read_heap_body()
 
     cur_heap_size = 0;
     cur_body_size = 0;
+
+    //vdeb << "heap" << cur_heap.toHex() << ", body: " << cur_body << "buf left:" << buffer.size();
 
     return true;
 }
@@ -363,6 +369,7 @@ Slot_Proxy::Slot_Proxy()
 
     server.accepted += [this]( vtcp_socket::accepted_peer peer )
     {
+        vdeb << "master-server accepted connection";
         server_socket = peer.as_shared();
         server_socket->received += [this]( auto && data )
         {

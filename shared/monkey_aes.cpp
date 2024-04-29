@@ -127,7 +127,7 @@ std::string Monkey_AES::encrypt( const std::string & data )
 //=======================================================================================
 // 16 -- sizes
 // heap
-Monkey_AES::str Monkey_AES::heap_encrypt( cstr heap, uint32_t body_size )
+vbyte_buffer Monkey_AES::heap_encrypt( cstr heap, uint32_t body_size )
 {
     auto salt = Monkey_AES::some_rand_hex(5, 15);
     vcat msg(salt, "\n", heap);
@@ -143,7 +143,20 @@ Monkey_AES::str Monkey_AES::heap_encrypt( cstr heap, uint32_t body_size )
     if (ebb.size() != 16) throw verror;
 
     ebb.append( emsg );
+
+    test_heap( heap, ebb, heap, body_size );
+
     return ebb;
+}
+//=======================================================================================
+void Monkey_AES::test_heap( cstr hh, vbyte_buffer enc, cstr heap, uint32_t body_size )
+{
+    uint32_t h, b;
+    decrypt_sizes( &enc, &h, &b );
+    if ( b != body_size ) throw verror;
+    if ( h != enc.size() ) throw verror;
+    auto dec = decrypt(enc);
+    if ( dec.find(hh) == std::string::npos ) throw verror;
 }
 //=======================================================================================
 
@@ -168,26 +181,35 @@ std::string Monkey_AES::decrypt( const std::string& data )
 
     int out_len2 = res.size() - out_len1;
     rc = EVP_DecryptFinal( ctx.get(), out_ptr+out_len1, &out_len2 );
+    //vdeb << out_len1 << out_len2;
     if (rc != 1)
+    {
+        vdeb << vbyte_buffer(data).toHex();
         throw std::runtime_error("EVP_DecryptFinal_ex failed");
+        //if ( res.size() != out_len1 )
+
+    }
 
     // Set recovered text size now that we know it
     res.resize(out_len1 + out_len2);
     return res;
 }
 //=======================================================================================
-Monkey_AES::u32_u32 Monkey_AES::decrypt_sizes(vbyte_buffer *data)
+void Monkey_AES::decrypt_sizes( vbyte_buffer *data, uint32_t *h, uint32_t *b )
 {
     if ( data->size() < 16 ) throw verror;
     auto esizes = data->left(16);
+
+    auto sz1 = data->size();
+
     data->chop_front(16);
+    if ( sz1 != data->size() + 16 )
+        throw verror;
 
     vbyte_buffer sizes = decrypt(esizes);
     auto view = sizes.view();
     view.string(7);
-    auto heap = view.u32_LE();
-    auto body = view.u32_LE();
-
-    return {heap, body};
+    *h = view.u32_LE();
+    *b = view.u32_LE();
 }
 //=======================================================================================

@@ -40,6 +40,7 @@ public:
     std::string sha() const;
 
     void connect();
+    vsignal<> disconnected;
 
     vsignal<std::string> error_happened;
     vsignal<> logined;
@@ -67,9 +68,6 @@ private:
     void wait_aes();
     void wait_logined();
     void wait_any();
-    void wait_clients();
-
-    //void wait_proxy();
 
     using waiter_fn = decltype(&Side_Socket::wait_aes);
     waiter_fn waiter = nullptr;

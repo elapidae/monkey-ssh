@@ -16,7 +16,7 @@ public:
     using cstr = const str&;
     using str_str = std::tuple<str,str>;
     using str_u32 = std::tuple<str,uint32_t>;
-    using u32_u32 = std::tuple<uint32_t,uint32_t>;
+    //using u32_u32 = std::tuple<uint32_t,uint32_t>;
 
     static std::string some_rand_hex(int size, int diff);
     static std::string some_rand(int size);
@@ -27,12 +27,14 @@ public:
     std::string hex_keys() const;
 
     std::string encrypt( const std::string& data );
-    str heap_encrypt(cstr heap, uint32_t body_size = 0);
+    vbyte_buffer heap_encrypt(cstr heap, uint32_t body_size = 0);
 
     std::string decrypt( const std::string& data );
-    u32_u32 decrypt_sizes(vbyte_buffer* data);
+    void decrypt_sizes( vbyte_buffer* data, uint32_t *h, uint32_t *b );
 
 private:
+    void test_heap( cstr hh, vbyte_buffer enc, cstr heap, uint32_t body_size );
+
     static const unsigned int KEY_SIZE = 32;
     static const unsigned int BLOCK_SIZE = 16;
 

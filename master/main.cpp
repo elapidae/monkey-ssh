@@ -10,7 +10,7 @@ void test_tcp( int port )
     static vtcp_socket s;
     s.connect( vsocket_address::loopback_ip4(port) );
 
-    s.connected += []{ vdeb << "connected"; };
+    s.connected += []{ vdeb << "inside socket connected to master-slot"; };
     s.disconnected+= []{ vdeb << "disconnected"; };
     s.received += [](auto data){ vdeb << "received" << data; };
 }

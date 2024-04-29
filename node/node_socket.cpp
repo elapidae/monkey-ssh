@@ -22,8 +22,13 @@ Node_Socket::Node_Socket( Node_Server *_owner, vtcp_socket::accepted_peer peer )
 void Node_Socket::send_transit( vbyte_buffer tran_heap, const vbyte_buffer& body )
 {
     auto heap = aes.heap_encrypt( tran_heap, body.size() );
+    //vdeb.nospace() << "Transit, heap: '" << tran_heap << "'";
     socket->send( heap );
     socket->send( body );
+
+    //vdeb << "==================================================================";
+    //vdeb << "heap" << heap.toHex();
+    //vdeb << "body" << body;
 }
 //=======================================================================================
 bool Node_Socket::is_connected() const
@@ -39,7 +44,6 @@ void Node_Socket::disconnected()
 void Node_Socket::received( const std::string& data )
 {
     buffer += data;
-    //vdeb << "node socket received" << buffer.size();
     (this->*cur_receiver)();
 }
 //=======================================================================================
@@ -118,7 +122,7 @@ void Node_Socket::waiting_op()
 
     if ( op == "clients-list")
     {
-        auto res = owner->clients_list() + "\n";
+        auto res = owner->clients_list() + "op:clients-list\n\n";
         auto crypted = aes.heap_encrypt(res);
         socket->send( crypted );
         return;
@@ -127,9 +131,10 @@ void Node_Socket::waiting_op()
     if ( op == "transit" )
     {
         auto target_sha = map["target"];
-        vdeb << "transit, target:" << target_sha << ", body size:" << cur_body.size();
+        //vdeb << "transit, target:" << target_sha << ", body size:" << cur_body.size();
         auto target = owner->get_by_sha( target_sha );
-        if ( !target ) {
+        if ( !target )
+        {
             vdeb << "Has no target" << target_sha;
             vcat msg("op:error\ndesc:no target\ntarget:", target_sha, "\n\n");
             auto crypted = aes.heap_encrypt( msg );
@@ -150,9 +155,7 @@ bool Node_Socket::read_heap_body_sizes()
 
     if ( buffer.size() < 16 ) return false;
 
-    auto [h, b] = aes.decrypt_sizes( &buffer );
-    cur_heap_size = h;
-    cur_body_size = b;
+    aes.decrypt_sizes( &buffer, &cur_heap_size, &cur_body_size );
 
     if ( cur_heap_size == 0 ) throw verror;
     return true;

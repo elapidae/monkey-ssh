@@ -18,12 +18,19 @@ int main( int argc, char **argv )
     system( vcat("touch ", sett_fname, " 2>/dev/null").str().c_str() );
     sett.load( sett_fname );
 
+    //vdeb << "LOCALHOST!!!!!!!!!!";
+    //sett.server.address = "localhost";
+
     auto rsa = Monkey_RSA::generate_or_read_private( path );
 
     Side_Socket socket;
     socket.set_rsa( rsa );
     socket.set_settings( sett );
     socket.connect();
+
+    socket.disconnected += []{
+        exit(0);
+    };
 
     vapplication::poll();
 }
