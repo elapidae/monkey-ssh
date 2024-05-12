@@ -18,9 +18,10 @@ int main( int argc, char **argv )
     phony.accepted += [&](vtcp_socket::accepted_peer peer)
     {
         socket = peer.as_unique();
-        socket->received += [](auto data)
+        socket->received += [&](auto data)
         {
             vdeb << "received:" << data;
+            socket->send("\r\n\r\n<h1>HW!</h1>");
         };
     };
 
@@ -35,9 +36,9 @@ int main( int argc, char **argv )
         socket->send( msg );
     };
     //
-    t.start(2s);
-    t.start(400ms);
-    t.start(100ms);
+//    t.start(2s);
+//    t.start(400ms);
+//    t.start(100ms);
     //t.start(10ms);
 
     vapplication::poll();

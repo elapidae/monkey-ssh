@@ -1,4 +1,4 @@
 #!/bin/bash -e
 
-sshfs root@v25735.hosted-by-vdsina.com:/ vdsina-root
+sshfs root@v37503.hosted-by-vdsina.com:/ vdsina-root
 

@@ -7,12 +7,18 @@
 //=======================================================================================
 void test_tcp( int port )
 {
-    static vtcp_socket s;
-    s.connect( vsocket_address::loopback_ip4(port) );
+    static vtcp_socket peer;
+    peer.connect( vsocket_address::loopback_ip4(port) );
 
-    s.connected += []{ vdeb << "inside socket connected to master-slot"; };
-    s.disconnected+= []{ vdeb << "disconnected"; };
-    s.received += [](auto data){ vdeb << "received >> " << data; };
+    static vtcp_socket ssh;
+    ssh.connected += []{ vdeb << "inside socket connected to master-slot"; };
+    ssh.disconnected+= []{ vdeb << "disconnected"; };
+
+    peer.connected += []{ vdeb << "inside socket connected to master-slot"; };
+    peer.disconnected+= []{ vdeb << "disconnected"; };
+    peer.received += [](auto data){
+        vdeb << "received >> " << data;
+    };
 }
 //=======================================================================================
 int main( int argc, char **argv )

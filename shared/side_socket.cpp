@@ -375,7 +375,7 @@ Slot_Proxy::Slot_Proxy()
     {
         vdeb << "master-server accepted connection";
         server_socket = peer.as_shared();
-        server_socket->received += [this]( auto && data )
+        server_socket->received += [this]( auto & data )
         {
             owner->send_slot_received( this, data );
         };
