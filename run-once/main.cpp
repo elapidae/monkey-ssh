@@ -3,11 +3,14 @@
 #include <sstream>
 #include "vcmdline_parser.h"
 #include "vbyte_buffer.h"
+#include "vlog.h"
 
 using namespace std;
 
 int main( int argc, char ** argv )
 {
+    vlog::set_shared_log( "/tmp/run-once.log", 16*1024, 3 );
+
     string tmpfile = "/tmp/ps-once.log";
 
     vcmdline_parser args(argc, argv);
